@@ -216,12 +216,24 @@
     </footer>
     
     <script>
-        async function lookupDNS(domain, type) {
+        const recordTypes = {
+            A: { label: 'A (IPv4 Address)', type: 'A', icon: 'fas fa-network-wired' },
+            AAAA: { label: 'AAAA (IPv6 Address)', type: 'AAAA', icon: 'fas fa-globe-americas' },
+            CNAME: { label: 'CNAME (Canonical Name)', type: 'CNAME', icon: 'fas fa-link' },
+            MX: { label: 'MX (Mail Exchange)', type: 'MX', icon: 'fas fa-envelope' },
+            TXT: { label: 'TXT (Text Records)', type: 'TXT', icon: 'fas fa-file-alt' },
+            SPF: { label: 'SPF (Sender Policy Framework)', type: 'TXT', icon: 'fas fa-shield-alt', filter: 'v=spf1' },
+            DMARC: { label: 'DMARC (Domain-based Message Authentication)', type: 'TXT', prefix: '_dmarc.', icon: 'fas fa-lock' }
+        };
+        
+        async function lookupDNS(domain, typeKey) {
+            const rt = recordTypes[typeKey];
             let query = domain;
+            let queryType = rt.type;
             // Adjust query for special cases
-            if (type === "DMARC") query = `_dmarc.${domain}`;
-            if (type === "SPF") type = "TXT"; // SPF is within TXT records
-            const api = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(query)}&type=${type}`;
+            if (typeKey === "DMARC") query = `${rt.prefix}${domain}`;
+            if (typeKey === "SPF") queryType = "TXT"; // SPF is within TXT records
+            const api = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(query)}&type=${queryType}`;
             const res = await fetch(api, { 
                 headers: { 'Accept': 'application/dns-json' },
                 method: 'GET'
@@ -231,7 +243,12 @@
             if (data.Status !== 0) {
                 throw new Error(`DNS error: ${getStatusMessage(data.Status)}`);
             }
-            return data.Answer || [];
+            let records = data.Answer || [];
+            // If SPF selected, filter for SPF-specific TXT records
+            if (typeKey === "SPF") {
+                records = records.filter(r => r.data.includes(rt.filter));
+            }
+            return records;
         }
         
         function getStatusMessage(status) {
@@ -245,26 +262,25 @@
             return messages[status] || 'Unknown Error';
         }
         
-        function renderTable(title, records) {
+        function renderTable(title, records, icon) {
             if (!records.length) {
                 return `<div class="result-section">
-                    <h3><i class="fas fa-info-circle"></i> ${title}</h3>
+                    <h3><i class="${icon}"></i> ${title}</h3>
                     <div class="no-records">No records found.</div>
                 </div>`;
             }
             let rows = records.map(r => `
                 <tr>
                     <td>${r.name}</td>
-                    <td>${r.type}</td>
                     <td>${r.data}</td>
                     <td>${r.TTL}s</td>
                 </tr>
             `).join('');
             return `
                 <div class="result-section">
-                    <h3><i class="fas fa-chart-bar"></i> ${title}</h3>
+                    <h3><i class="${icon}"></i> ${title}</h3>
                     <table>
-                        <tr><th>Name</th><th>Type</th><th>Value</th><th>TTL</th></tr>
+                        <tr><th>Name</th><th>Value</th><th>TTL</th></tr>
                         ${rows}
                     </table>
                 </div>
@@ -273,22 +289,18 @@
         
         async function lookup() {
             const domain = document.getElementById('domain').value.trim();
-            const type = document.getElementById('recordType').value;
+            const typeKey = document.getElementById('recordType').value;
+            const rt = recordTypes[typeKey];
             const resultDiv = document.getElementById('result');
             if (!domain) {
                 resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Please enter a domain.</div>`;
                 return;
             }
-            resultDiv.innerHTML = `<div class="loading"><i class="fas fa-spinner"></i> Looking up...</div>`;
+            resultDiv.innerHTML = `<div class="loading"><i class="fas fa-spinner"></i> Looking up ${rt.label.toLowerCase()}...</div>`;
             try {
-                const records = await lookupDNS(domain, type);
-                // If SPF selected, filter for SPF-specific TXT records
-                let filtered = records;
-                if (type === "SPF") {
-                    filtered = records.filter(r => r.data.includes("v=spf1"));
-                }
-                const displayType = type === "SPF" ? "SPF" : type;
-                resultDiv.innerHTML = renderTable(`${displayType} Record(s) for ${domain}`, filtered);
+                const records = await lookupDNS(domain, typeKey);
+                const displayTitle = `${rt.label} for ${typeKey === 'DMARC' ? `${rt.prefix}${domain}` : domain}`;
+                resultDiv.innerHTML = renderTable(displayTitle, records, rt.icon);
             } catch (err) {
                 resultDiv.innerHTML = `<div class="error"><i class="fas fa-times-circle"></i> Lookup failed: ${err.message}</div>`;
             }
