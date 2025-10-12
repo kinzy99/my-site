@@ -258,7 +258,8 @@
                     queryName = `${rt.prefix}${domain}`;
                 }
                 
-                const apiUrl = `https://dns.google/removed?name=${encodeURIComponent(queryName)}&type=${queryType}`;
+                const api = `https://cloudflare-dns.com/dns-query?name=${domain}&type=${type}`;
+                const res = await fetch(api, { headers: { 'Accept': 'application/dns-json' } });
                 
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
