@@ -548,14 +548,13 @@
         <p>&copy; More is coming soon ....</p>
     </footer>
     
-   <!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMARC Report Analyzer</title>
     <style>
-        /* Basic CSS for styling */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -565,7 +564,7 @@
         }
         
         header {
-            background-color: #007bff; /* Blue for a professional look */
+            background-color: #007bff;
             padding: 20px;
             text-align: center;
             color: white;
@@ -638,7 +637,7 @@
 <body>
     <header>
         <h1>DMARC Report Analyzer</h1>
-        <p>Paste your DMARC XML report below and analyze it for SPF, DKIM, DMARC results, and more.</p>
+        <p>Paste your DMARC XML report below and analyze it.</p>
     </header>
     
     <main>
@@ -648,22 +647,21 @@
             <textarea id="xmlInput" placeholder="Paste your XML here..."></textarea>
             <button id="analyzeButton">Analyze Report</button>
             <div id="errorMessage" class="error"></div>
-            <div id="resultsTable"></div> <!-- This is where the table will be generated -->
+            <div id="dmarcResult"></div> <!-- Where the table will be generated -->
         </section>
     </main>
     
     <script>
-        // JavaScript for analyzing the XML
         document.getElementById('analyzeButton').addEventListener('click', function() {
             const xmlText = document.getElementById('xmlInput').value;
             const errorDiv = document.getElementById('errorMessage');
-            const resultsDiv = document.getElementById('resultsTable');
+            const resultsDiv = document.getElementById('dmarcResult');
             
-            errorDiv.textContent = '';  // Clear previous errors
-            resultsDiv.innerHTML = '';  // Clear previous results
+            errorDiv.textContent = '';  // Clear errors
+            resultsDiv.innerHTML = '';  // Clear results
             
             if (!isValidXML(xmlText)) {
-                errorDiv.textContent = 'Error: The input is not valid XML. Please paste a proper XML file.';
+                errorDiv.textContent = 'Error: The input is not valid XML.';
                 return;
             }
             
@@ -671,25 +669,23 @@
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
                 
-                // Check for parsing errors
                 if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
-                    errorDiv.textContent = 'Error: The XML contains parsing errors. Please check the format.';
+                    errorDiv.textContent = 'Error: The XML contains parsing errors.';
                     return;
                 }
                 
-                const records = xmlDoc.getElementsByTagName('record');  // Assuming standard DMARC structure
+                const records = xmlDoc.getElementsByTagName('record');
                 if (records.length === 0) {
                     errorDiv.textContent = 'Error: No records found in the XML.';
                     return;
                 }
                 
-                // Generate table with the new column
                 let tableHTML = '<table><thead><tr><th>Sender Domain</th><th>SPF Result</th><th>DKIM Result</th><th>DMARC Result</th><th>Sender IP</th><th>Date</th><th>Email Volume</th><th>Status</th></tr></thead><tbody>';
                 
                 for (let i = 0; i < records.length; i++) {
                     const row = records[i].getElementsByTagName('row')[0];
                     const identifiers = records[i].getElementsByTagName('identifiers')[0];
-                    const headerFrom = identifiers?.getElementsByTagName('header_from')[0]?.textContent || 'N/A';  // Extract Sender Domain
+                    const headerFrom = identifiers?.getElementsByTagName('header_from')[0]?.textContent || 'N/A';
                     if (row) {
                         const sourceIp = row.getElementsByTagName('source_ip')[0]?.textContent || 'N/A';
                         const count = row.getElementsByTagName('count')[0]?.textContent || 'N/A';
@@ -697,10 +693,7 @@
                         const authResults = records[i].getElementsByTagName('auth_results')[0];
                         const spfResult = authResults?.getElementsByTagName('spf')[0]?.getAttribute('result') || 'N/A';
                         const dkimResult = authResults?.getElementsByTagName('dkim')[0]?.getAttribute('result') || 'N/A';
-                        const dateRange = xmlDoc.getElementsByTagName('date_range')[0];
-                        const date = dateRange?.getElementsByTagName('begin')[0]?.textContent || 'N/A';
-                        
-                        // Map DMARC disposition to status
+                        const date = xmlDoc.getElementsByTagName('date_range')[0]?.getElementsByTagName('begin')[0]?.textContent || 'N/A';
                         let status = 'N/A';
                         if (disposition) {
                             if (disposition.toLowerCase() === 'none') status = 'Received';
@@ -709,7 +702,7 @@
                         }
                         
                         tableHTML += `<tr>
-                            <td>${headerFrom}</td>  <!-- New column: Sender Domain -->
+                            <td>${headerFrom}</td>
                             <td>${spfResult}</td>
                             <td>${dkimResult}</td>
                             <td>${disposition}</td>
@@ -729,7 +722,6 @@
             }
         });
         
-        // Function to check if the input is valid XML
         function isValidXML(text) {
             try {
                 const parser = new DOMParser();
