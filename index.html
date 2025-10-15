@@ -548,194 +548,94 @@
         <p>&copy; More is coming soon ....</p>
     </footer>
     
-    <script>
-        function extractEmail(value) {
-            // Extract email from formats like "Name <email@domain.com>" or just "email@domain.com"
-            const emailMatch = value.match(/<([^>]+)>/);
-            if (emailMatch) {
-                return emailMatch[1].trim();
-            }
-            // If no <>, check if the whole value looks like an email
-            const simpleEmailMatch = value.match(/^[^\s<]+@[^\s>]+$/);
-            if (simpleEmailMatch) {
-                return simpleEmailMatch[0].trim();
-            }
-            return value.trim(); // Fallback to original if no email found
+   <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMARC Report Analyzer</title>
+    <style>
+        /* Basic CSS for styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
         }
         
-        function parseAuthResults(value) {
-            const parts = value.split(';').map(p => p.trim()).filter(p => p);
-            const results = { spf: '', dkim: '', dmarc: '' };
-            
-            parts.forEach(part => {
-                if (part.startsWith('spf=')) {
-                    results.spf = part;
-                } else if (part.startsWith('dkim=')) {
-                    results.dkim = part;
-                } else if (part.startsWith('dmarc=')) {
-                    results.dmarc = part;
-                }
-            });
-            
-            return results;
+        header {
+            background-color: #007bff; /* Blue for a professional look */
+            padding: 20px;
+            text-align: center;
+            color: white;
         }
         
-        function getAuthClass(status) {
-            if (status.includes('pass')) return 'auth-result';
-            if (status.includes('fail') || status.includes('reject')) return 'auth-fail';
-            if (status.includes('none') || status.includes('neutral')) return 'auth-none';
-            return '';
+        main {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
         
-        function analyzeHeaders() {
-            const headersText = document.getElementById('emailHeaders').value.trim();
-            const resultDiv = document.getElementById('result');
-            if (!headersText) {
-                resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Please paste email headers.</div>`;
-                return;
-            }
-            resultDiv.innerHTML = `<div class="loading"><i class="fas fa-spinner"></i> Analyzing headers...</div>`;
-            
-            try {
-                const lines = headersText.split(/\r?\n/);
-                const parsedHeaders = {};
-                let currentKey = '';
-                let currentValue = '';
-                let ignoreAfterBoundary = false;
-                
-                lines.forEach((line, index) => {
-                    line = line.trim();
-                    if (line === '') return; // Skip empty lines
-                    
-                    // Check for MIME boundary (e.g., lines starting with "------=" or similar)
-                    if (line.startsWith('-----') && line.includes('=') && !ignoreAfterBoundary) {
-                        ignoreAfterBoundary = true;
-                        return; // Stop processing after boundary
-                    }
-                    
-                    if (ignoreAfterBoundary) return; // Ignore everything after boundary
-                    
-                    if (line.includes(':')) {
-                        // Save previous header if exists (but ignore if it's a long/custom X- header)
-                        if (currentKey && currentValue && !currentKey.toLowerCase().startsWith('x-')) {
-                            parsedHeaders[currentKey.toLowerCase()] = currentValue.trim();
-                        }
-                        // New header - check if it's not X- and not the last incomplete row
-                        const colonIndex = line.indexOf(':');
-                        currentKey = line.substring(0, colonIndex).trim();
-                        currentValue = line.substring(colonIndex + 1).trim();
-                        
-                        // Ignore X- headers (e.g., X-Mailer, X-Originating-IP)
-                        if (currentKey.toLowerCase().startsWith('x-')) {
-                            currentKey = '';
-                            currentValue = '';
-                            return;
-                        }
-                        
-                        // Ignore if it's the last line and incomplete (no colon or very short)
-                        if (index === lines.length - 1 && colonIndex === -1) {
-                            currentKey = '';
-                            currentValue = '';
-                            return;
-                        }
-                    } else if (currentKey && currentValue && !currentKey.toLowerCase().startsWith('x-')) {
-                        // Multi-line continuation (append with space or newline)
-                        currentValue += '\n' + line;
-                    }
-                });
-                
-                // Save the last header (if valid and not X-)
-                if (currentKey && currentValue && !currentKey.toLowerCase().startsWith('x-')) {
-                    parsedHeaders[currentKey.toLowerCase()] = currentValue.trim();
-                }
-                
-                // Render table if headers found
-                if (Object.keys(parsedHeaders).length === 0) {
-                    resultDiv.innerHTML = `<div class="result-section">
-                        <h3><i class="fas fa-info-circle"></i> Analysis Results</h3>
-                        <div class="no-headers">No valid headers found. Ensure the input contains lines with 'Key: Value' format (X- headers and content after MIME boundaries are ignored).</div>
-                    </div>`;
-                    return;
-                }
-                
-                let rows = '';
-                Object.keys(parsedHeaders).forEach(key => {
-                    let displayValue = parsedHeaders[key].replace(/\n/g, '<br>'); // Preserve multi-line in HTML
-                    const displayKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/-(.)/g, (match, g) => ' ' + g.toUpperCase());
-                    
-                    // Special handling for From and To: Extract and highlight full email address
-                    if (key.toLowerCase() === 'from' || key.toLowerCase() === 'to') {
-                        const email = extractEmail(parsedHeaders[key]);
-                        displayValue = `${displayValue}<br><span class="email-address">Full Email: ${email}</span>`;
-                    }
-                    
-                    // Special handling for Authentication-Results: Split into SPF, DKIM, DMARC rows
-                    if (key.toLowerCase() === 'authentication-results') {
-                        const authParts = parseAuthResults(parsedHeaders[key]);
-                        
-                        // SPF Row
-                        if (authParts.spf) {
-                            const spfClass = getAuthClass(authParts.spf);
-                            rows += `
-                                <tr>
-                                    <td>Authentication-Results: SPF</td>
-                                    <td><span class="${spfClass}">${authParts.spf}</span></td>
-                                </tr>
-                            `;
-                        }
-                        
-                        // DKIM Row
-                        if (authParts.dkim) {
-                            const dkimClass = getAuthClass(authParts.dkim);
-                            rows += `
-                                <tr>
-                                    <td>Authentication-Results: DKIM</td>
-                                    <td><span class="${dkimClass}">${authParts.dkim}</span></td>
-                                </tr>
-                            `;
-                        }
-                        
-                        // DMARC Row
-                        if (authParts.dmarc) {
-                            const dmarcClass = getAuthClass(authParts.dmarc);
-                            rows += `
-                                <tr>
-                                    <td>Authentication-Results: DMARC</td>
-                                    <td><span class="${dmarcClass}">${authParts.dmarc}</span></td>
-                                </tr>
-                            `;
-                        }
-                        
-                        return; // Skip adding the original row
-                    }
-                    
-                    rows += `
-                        <tr>
-                            <td>${displayKey}</td>
-                            <td>${displayValue}</td>
-                        </tr>
-                    `;
-                });
-                
-                const html = `<div class="result-section">
-                    <h3><i class="fas fa-table"></i> Parsed Email Headers</h3>
-                    <table>
-                        <tr><th>Tag</th><th>Field</th></tr>
-                        ${rows}
-                    </table>
-                    <p style="margin-top: 15px; font-style: italic; color: #666;">Total headers parsed: ${Object.keys(parsedHeaders).length} (X- headers, incomplete last row, and content after MIME boundaries ignored; Authentication-Results split into sub-rows)</p>
-                </div>`;
-                
-                resultDiv.innerHTML = html;
-                
-            } catch (err) {
-                resultDiv.innerHTML = `<div class="error"><i class="fas fa-times-circle"></i> Analysis failed: ${err.message}</div>`;
-            }
+        .tool-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
-    </script>
-</body>
-
-    <body>
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            font-family: monospace;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #007bff;
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
     <header>
         <h1>DMARC Report Analyzer</h1>
         <p>Paste your DMARC XML report below and analyze it for SPF, DKIM, DMARC results, and more.</p>
@@ -758,6 +658,90 @@
             const xmlText = document.getElementById('xmlInput').value;
             const errorDiv = document.getElementById('errorMessage');
             const resultsDiv = document.getElementById('resultsTable');
+            
+            errorDiv.textContent = '';  // Clear previous errors
+            resultsDiv.innerHTML = '';  // Clear previous results
+            
+            if (!isValidXML(xmlText)) {
+                errorDiv.textContent = 'Error: The input is not valid XML. Please paste a proper XML file.';
+                return;
+            }
+            
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                
+                // Check for parsing errors
+                if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
+                    errorDiv.textContent = 'Error: The XML contains parsing errors. Please check the format.';
+                    return;
+                }
+                
+                const records = xmlDoc.getElementsByTagName('record');  // Assuming standard DMARC structure
+                if (records.length === 0) {
+                    errorDiv.textContent = 'Error: No records found in the XML.';
+                    return;
+                }
+                
+                // Generate table with the new column
+                let tableHTML = '<table><thead><tr><th>Sender Domain</th><th>SPF Result</th><th>DKIM Result</th><th>DMARC Result</th><th>Sender IP</th><th>Date</th><th>Email Volume</th><th>Status</th></tr></thead><tbody>';
+                
+                for (let i = 0; i < records.length; i++) {
+                    const row = records[i].getElementsByTagName('row')[0];
+                    const identifiers = records[i].getElementsByTagName('identifiers')[0];
+                    const headerFrom = identifiers?.getElementsByTagName('header_from')[0]?.textContent || 'N/A';  // Extract Sender Domain
+                    if (row) {
+                        const sourceIp = row.getElementsByTagName('source_ip')[0]?.textContent || 'N/A';
+                        const count = row.getElementsByTagName('count')[0]?.textContent || 'N/A';
+                        const disposition = row.getElementsByTagName('policy_evaluated')[0]?.getElementsByTagName('disposition')[0]?.textContent || 'N/A';
+                        const authResults = records[i].getElementsByTagName('auth_results')[0];
+                        const spfResult = authResults?.getElementsByTagName('spf')[0]?.getAttribute('result') || 'N/A';
+                        const dkimResult = authResults?.getElementsByTagName('dkim')[0]?.getAttribute('result') || 'N/A';
+                        const dateRange = xmlDoc.getElementsByTagName('date_range')[0];
+                        const date = dateRange?.getElementsByTagName('begin')[0]?.textContent || 'N/A';
+                        
+                        // Map DMARC disposition to status
+                        let status = 'N/A';
+                        if (disposition) {
+                            if (disposition.toLowerCase() === 'none') status = 'Received';
+                            else if (disposition.toLowerCase() === 'quarantine') status = 'Quarantined';
+                            else if (disposition.toLowerCase() === 'reject') status = 'Rejected';
+                        }
+                        
+                        tableHTML += `<tr>
+                            <td>${headerFrom}</td>  <!-- New column: Sender Domain -->
+                            <td>${spfResult}</td>
+                            <td>${dkimResult}</td>
+                            <td>${disposition}</td>
+                            <td>${sourceIp}</td>
+                            <td>${date}</td>
+                            <td>${count}</td>
+                            <td>${status}</td>
+                        </tr>`;
+                    }
+                }
+                
+                tableHTML += '</tbody></table>';
+                resultsDiv.innerHTML = tableHTML;
+            } catch (error) {
+                errorDiv.textContent = 'Error: Failed to analyze the XML. Please ensure it\'s a valid DMARC report.';
+                console.error(error);
+            }
+        });
+        
+        // Function to check if the input is valid XML
+        function isValidXML(text) {
+            try {
+                const parser = new DOMParser();
+                parser.parseFromString(text, 'text/xml');
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+    </script>
+</body>
+</html>
 
 
 
