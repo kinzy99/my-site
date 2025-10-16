@@ -142,14 +142,17 @@
                     headers: { 'Accept': 'application/dns-json' }
                 });
                 if (!response.ok) {
-                    throw new Error('DNS query failed. Please try again later.');
+                    throw new Error('DNS query failed: ' + response.statusText);
                 }
                 const data = await response.json();
-                const txtRecords = data.Answer ? data.Answer.filter(record => record.data.startsWith('v=spf1')) : [];
+                console.log('API Response:', data);  // Log the full response
+                const txtRecords = data.Answer ? data.Answer.filter(record => record.data && record.data.toLowerCase().startsWith('v=spf1')) : [];
+                console.log('Filtered TXT Records:', txtRecords);  // Log filtered records
                 
                 if (txtRecords.length > 0) {
                     const spfRecord = txtRecords[0].data;
-                    if (spfRecord.includes(ip)) {
+                    console.log('SPF Record Found:', spfRecord);
+                    if (spfRecord.toLowerCase().includes(ip.toLowerCase())) {
                         resultDiv.textContent = `The IP ${ip} is included in the SPF record.`;
                         resultDiv.className = 'result success';
                     } else {
@@ -163,7 +166,7 @@
             } catch (error) {
                 resultDiv.textContent = `Error: ${error.message}`;
                 resultDiv.className = 'result failure';
-                console.error(error);
+                console.error('Detailed error:', error);
             }
         });
     </script>
