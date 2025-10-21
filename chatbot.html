@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Security Chatbot - SPF, DKIM, DMARC Support</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #6A1B9A 0%, #AB47BC 100%);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        main {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .intro {
+            background-color: #EDE7F6;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: 2px solid #AB47BC;
+        }
+        
+        #chatbot-widget {
+            background-color: #EDE7F6;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 2px solid #AB47BC;
+        }
+        
+        #chatbot-input-container {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        #chatbot-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #AB47BC;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        #chatbot-send {
+            background-color: #6A1B9A;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        #chatbot-send:hover {
+            background-color: #AB47BC;
+        }
+        
+        #chatbot-messages {
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #AB47BC;
+            border-radius: 4px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+        }
+        
+        .user-message {
+            text-align: right;
+            color: #6A1B9A;
+            font-weight: bold;
+        }
+        
+        .bot-message {
+            text-align: left;
+            color: #333;
+        }
+        
+        @media (max-width: 600px) {
+            main {
+                padding: 10px;
+            }
+            .intro, #chatbot-widget {
+                padding: 15px;
+            }
+            #chatbot-input-container {
+                flex-direction: column;
+            }
+            #chatbot-input {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Email Security Chatbot</h1>
+        <p>Get instant answers about SPF, DKIM, and DMARC for your email security needs.</p>
+    </header>
+    
+    <main>
+        <section class="intro">
+            <h2>Welcome to Our Email Security Support</h2>
+            <p>This chatbot is here to help with questions about SPF (Sender Policy Framework), DKIM (DomainKeys Identified Mail), and DMARC (Domain-based Message Authentication, Reporting, and Conformance). Ask anything related to these topics, and we'll provide guidance!</p>
+            <p>Examples: "What is SPF?", "How to check DKIM?", "DMARC setup help".</p>
+        </section>
+        
+        <section id="chatbot-widget">
+            <h2>Chat with Our Bot</h2>
+            <div id="chatbot-input-container">
+                <input type="text" id="chatbot-input" placeholder="Type your question...">
+                <button id="chatbot-send">Send</button>
+            </div>
+            <div id="chatbot-messages">
+                <div class="message bot-message">Hello! How can I help you with SPF, DKIM, or DMARC today?</div>
+            </div>
+        </section>
+    </main>
+    
+    <script>
+        const chatbotMessages = document.getElementById('chatbot-messages');
+        const chatbotInput = document.getElementById('chatbot-input');
+        const chatbotSend = document.getElementById('chatbot-send');
+
+        chatbotSend.addEventListener('click', () => {
+            const userMessage = chatbotInput.value.trim();
+            if (userMessage) {
+                addMessage(userMessage, 'user');
+                const botResponse = getBotResponse(userMessage);
+                setTimeout(() => addMessage(botResponse, 'bot'), 500);
+                // Input box stays filled as per previous request
+            }
+        });
+
+        chatbotInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                chatbotSend.click();
+            }
+        });
+
+        function addMessage(message, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = message;
+            chatbotMessages.appendChild(messageDiv);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+
+        function getBotResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Exact Matches First
+            if (lowerMessage.includes('what is spf')) {
+                return 'SPF (Sender Policy Framework) is an email authentication protocol that specifies which mail servers are allowed to send emails on behalf of your domain. It helps prevent email spoofing by verifying the sender\'s IP address.';
+            } else if (lowerMessage.includes('what is dkim')) {
+                return 'DKIM (DomainKeys Identified Mail) is an email authentication method that uses digital signatures to verify that an email message was not altered during transit and that it truly came from the claimed sender. It involves public and private keys.';
+            } else if (lowerMessage.includes('what is dmarc')) {
+                return 'DMARC (Domain-based Message Authentication, Reporting, and Conformance) is an email authentication protocol that builds on SPF and DKIM. It allows domain owners to specify actions (like quarantine or reject) for emails that fail authentication, and provides reporting for better email security.';
+            
+            // Other Specific Responses
+            } else if (lowerMessage.includes('check spf') || lowerMessage.includes('validate spf')) {
+                return 'To check SPF, use our SPF Checker tool on the site or query your DNS for TXT records. Ensure it starts with "v=spf1" and ends with "-all" for strict enforcement.';
+            } else if (lowerMessage.includes('spf error') || lowerMessage.includes('spf problem')) {
+                return 'Common SPF errors include missing "-all" or invalid IP ranges. Check your DNS records and use our validator tool.';
+            } else if (lowerMessage.includes('check dkim') || lowerMessage.includes('validate dkim')) {
+                return 'To check DKIM, send a test email and inspect the headers for the DKIM signature. Tools like our DKIM Checker can help verify the signature.';
+            } else if (lowerMessage.includes('dkim error') || lowerMessage.includes('dkim problem')) {
+                return 'DKIM errors often stem from mismatched keys or DNS issues. Ensure your private key matches the public key in DNS.';
+            } else if (lowerMessage.includes('check dmarc') || lowerMessage.includes('validate dmarc')) {
+                return 'Use our DMARC Analyzer tool to parse your DMARC reports. Check for a TXT record like "_dmarc.yourdomain.com" with policies like "v=DMARC1; p=quarantine; rua=mailto:reports@yourdomain.com".';
+            } else if (lowerMessage.includes('dmarc error') || lowerMessage.includes('dmarc problem')) {
+                return 'DMARC issues often involve misconfigured policies or missing reports. Ensure SPF and DKIM are set up first.';
+            
+            // Keyword-Based Fallbacks (if related but not exact)
+            } else if (lowerMessage.includes('spf')) {
+                return 'SPF (Sender Policy Framework) is an email authentication protocol that specifies which mail servers are allowed to send emails on behalf of your domain. It helps prevent email spoofing by verifying the sender\'s IP address. This is all I know about SPF—ask for more details!';
+            } else if (lowerMessage.includes('dkim')) {
+                return 'DKIM (DomainKeys Identified Mail) is an email authentication method that uses digital signatures to verify that an email message was not altered during transit and that it truly came from the claimed sender. It involves public and private keys. This is all I know about DKIM—ask for more details!';
+            } else if (lowerMessage.includes('dmarc')) {
+                return 'DMARC (Domain-based Message Authentication, Reporting, and Conformance) is an email authentication protocol that builds on SPF and DKIM. It allows domain owners to specify actions (like quarantine or reject) for emails that fail authentication, and provides reporting for better email security. This is all I know about DMARC—ask for more details!';
+            
+            // General Responses
+            } else if (lowerMessage.includes('help') || lowerMessage.includes('how to')) {
+                return 'I can help with SPF, DKIM, and DMARC. Try asking "What is SPF?" or "How to check DMARC?". For tools, visit our main site!';
+            } else {
+                return 'Sorry, I specialize in SPF, DKIM, and DMARC. Please ask a question related to those topics!';
+            }
+        }
+    </script>
+</body>
+</html>
