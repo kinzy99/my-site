@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPF Record Validator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #6A1B9A 0%, #AB47BC 100%);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        main {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .tool-section {
+            background-color: #EDE7F6;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: 2px solid #AB47BC;
+        }
+        
+        label {
+            font-weight: bold;
+            color: #6A1B9A;
+            font-size: 1.1em;
+        }
+        
+        input[type="text"] {
+            padding: 15px;
+            border: 1px solid #AB47BC;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 16px;
+            margin-bottom: 10px;
+            background-color: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        input[type="text"]:focus {
+            border-color: #6A1B9A;
+            box-shadow: 0 0 10px rgba(106, 27, 154, 0.3);
+        }
+        
+        button {
+            background-color: #6A1B9A;
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 4px;
+            margin-top: 10px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #AB47BC;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 1.2em;
+        }
+        
+        .success {
+            color: green;
+            background-color: #d4edda;
+        }
+        
+        .failure {
+            color: red;
+            background-color: #f8d7da;
+        }
+        
+        @media (max-width: 600px) {
+            main {
+                padding: 10px;
+            }
+            .tool-section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>SPF Record Validator</h1>
+        <p>Enter a domain to validate its SPF record for syntax errors.</p>
+    </header>
+    
+    <main>
+        <section class="tool-section">
+            <h2>Validate SPF Record</h2>
+            <label for="domain">Domain Name:</label>
+            <input type="text" id="domain" placeholder="e.g., example.com">
+            
+            <button id="validateButton">Validate</button>
+            <div id="result" class="result"></div>
+        </section>
+    </main>
+    
+    <script>
+        document.getElementById('validateButton').addEventListener('click', async function() {
+            const domain = document.getElementById('domain').value.trim();
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Validating...';
+            resultDiv.className = 'result';  // Reset class
+            
+            if (!domain) {
+                resultDiv.textContent = 'Please enter a domain.';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=TXT`, {
+                    headers: { 'Accept': 'application/dns-json' }
+                });
+                if (!response.ok) {
+                    throw new Error('DNS query failed: ' + response.statusText);
+                }
+                const data = await response.json();
+                const txtRecords = data.Answer ? data.Answer.filter(record => record.data && record.data.toLowerCase().startsWith('v=spf1')) : [];
+                
+                if (txtRecords.length > 0) {
+                    const spfRecord = txtRecords[0].data;
+                    const errors = validateSPF(spfRecord);
+                    if (errors.length === 0) {
+                        resultDiv.textContent = 'The SPF record is valid.';
+                        resultDiv.className = 'result success';
+                    } else {
+                        resultDiv.textContent = 'SPF record has errors: ' + errors.join(', ');
+                        resultDiv.className = 'result failure';
+                    }
+                } else {
+                    resultDiv.textContent = 'No SPF record found for this domain.';
+                    resultDiv.className = 'result failure';
+                }
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.className = 'result failure';
+                console.error('Detailed error:', error);
+            }
+        });
+        
+        function validateSPF(record) {
+            const errors = [];
+            const lowerRecord = record.toLowerCase();
+            
+            // Check if it ends with -all
+            if (!lowerRecord.endsWith('-all')) {
+                errors.push('SPF record does not end with -all');
+            }
+            
+            // Check for void lookups (basic invalid mechanisms)
+            const mechanisms = lowerRecord.split(' ');
+            for (const mech of mechanisms) {
+                if (mech.startsWith('include:') && mech.length <= 9) {  // Empty include
+                    errors.push('Void lookup detected: invalid include mechanism');
+                } else if (mech.startsWith('a:') && mech.length <= 3) {  // Empty a
+                    errors.push('Void lookup detected: invalid a mechanism');
+                } else if (mech.startsWith('mx:') && mech.length <= 4) {  // Empty mx
+                    errors.push('Void lookup detected: invalid mx mechanism');
+                } else if (mech.includes('unknown')) {  // Placeholder for unknown mechanisms
+                    errors.push('Void lookup detected: unknown mechanism');
+                }
+            }
+            
+            return errors;
+        }
+    </script>
+</body>
+</html>
