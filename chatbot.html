@@ -97,6 +97,21 @@
             color: #333;
         }
         
+        #chatbot-clear {
+            background-color: #AB47BC;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+        
+        #chatbot-clear:hover {
+            background-color: #6A1B9A;
+        }
+        
         @media (max-width: 600px) {
             main {
                 padding: 10px;
@@ -136,6 +151,7 @@
             <div id="chatbot-messages">
                 <div class="message bot-message">Hello! How can I help you with SPF, DKIM, or DMARC today?</div>
             </div>
+            <button id="chatbot-clear">Clear</button>
         </section>
     </main>
     
@@ -143,6 +159,7 @@
         const chatbotMessages = document.getElementById('chatbot-messages');
         const chatbotInput = document.getElementById('chatbot-input');
         const chatbotSend = document.getElementById('chatbot-send');
+        const chatbotClear = document.getElementById('chatbot-clear');
 
         chatbotSend.addEventListener('click', () => {
             const userMessage = chatbotInput.value.trim();
@@ -158,6 +175,11 @@
             if (e.key === 'Enter') {
                 chatbotSend.click();
             }
+        });
+
+        chatbotClear.addEventListener('click', () => {
+            chatbotMessages.innerHTML = '<div class="message bot-message">Hello! How can I help you with SPF, DKIM, or DMARC today?</div>';
+            chatbotInput.value = '';
         });
 
         function addMessage(message, sender) {
