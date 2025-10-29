@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Phishing Detector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #6A1B9A 0%, #AB47BC 100%);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        main {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .detector-section {
+            background-color: #EDE7F6;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 2px solid #AB47BC;
+        }
+        
+        label {
+            font-weight: bold;
+            color: #6A1B9A;
+            font-size: 1.1em;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        input[type="url"] {
+            padding: 15px;
+            border: 1px solid #AB47BC;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 16px;
+            margin-bottom: 15px;
+            background-color: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        input[type="url"]:focus {
+            border-color: #6A1B9A;
+            box-shadow: 0 0 10px rgba(106, 27, 154, 0.3);
+        }
+        
+        button {
+            background-color: #6A1B9A;
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #AB47BC;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 1.2em;
+        }
+        
+        .safe {
+            color: green;
+            background-color: #d4edda;
+        }
+        
+        .suspicious {
+            color: orange;
+            background-color: #fff3cd;
+        }
+        
+        .dangerous {
+            color: red;
+            background-color: #f8d7da;
+        }
+        
+        .tips {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #6A1B9A;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 600px) {
+            main {
+                padding: 10px;
+            }
+            .detector-section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔍 URL Phishing Detector</h1>
+        <p>Check if a URL looks suspicious or safe.</p>
+    </header>
+    
+    <main>
+        <section class="detector-section">
+            <h2>Enter URL to Check</h2>
+            <label for="url">URL:</label>
+            <input type="url" id="url" placeholder="https://example.com">
+            
+            <button id="checkButton">Check URL</button>
+            <div id="result" class="result"></div>
+            
+            <div class="tips">
+                <h3>Phishing Signs to Watch For:</h3>
+                <ul>
+                    <li>No HTTPS (secure connection).</li>
+                    <li>Suspicious domains (e.g., misspellings like "g00gle.com").</li>
+                    <li>Keywords like "login", "bank", "verify".</li>
+                    <li>Long or complex URLs with redirects.</li>
+                    <li>Random numbers/letters (obfuscation).</li>
+                    <li>URL shorteners (e.g., bit.ly, is.gd) that hide the real link.</li>
+                </ul>
+                <p>Always verify URLs before clicking!</p>
+            </div>
+        </section>
+    </main>
+    
+    <script>
+        document.getElementById('checkButton').addEventListener('click', function() {
+            const url = document.getElementById('url').value.trim();
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result';
+            
+            if (!url) {
+                resultDiv.textContent = 'Please enter a URL.';
+                resultDiv.className = 'result dangerous';
+                return;
+            }
+            
+            const analysis = analyzeURL(url);
+            resultDiv.innerHTML = analysis.message;
+            resultDiv.className = `result ${analysis.level}`;
+        });
+        
+        function analyzeURL(url) {
+            let score = 0;
+            let reasons = [];
+            
+            // Check for HTTPS
+            if (!url.startsWith('https://')) {
+                score += 2;
+                reasons.push('No HTTPS (not secure).');
+            }
+            
+            // Check for URL shorteners
+            const shorteners = ['bit.ly', 'tinyurl.com', 'is.gd', 'goo.gl', 't.co', 'ow.ly', 'buff.ly', 'adf.ly', 'tiny.cc'];
+            const domain = new URL(url).hostname;
+            if (shorteners.includes(domain)) {
+                score += 3;
+                reasons.push('This is a shortened URL, which can hide malicious links.');
+            }
+            
+            // Check for suspicious keywords
+            const suspiciousKeywords = ['login', 'bank', 'verify', 'account', 'password', 'secure', 'update'];
+            const lowerURL = url.toLowerCase();
+            suspiciousKeywords.forEach(keyword => {
+                if (lowerURL.includes(keyword)) {
+                    score += 1;
+                    reasons.push(`Contains suspicious keyword: "${keyword}".`);
+                }
+            });
+            
+            // Check for misspellings or odd domains
+            if (domain.includes('g00gle') || domain.includes('paypa1') || domain.includes('amaz0n')) {
+                score += 3;
+                reasons.push('Domain looks like a misspelling of a known site.');
+            }
+            
+            // Check URL length
+            if (url.length > 100) {
+                score += 1;
+                reasons.push('URL is unusually long.');
+            }
+            
+            // Check for random numbers and letters (obfuscation)
+            const pathAndQuery = url.split('?')[1] || '' + url.split('/').slice(3).join('/'); // Get path and query
+            const randomPattern = /[a-zA-Z0-9]{10,}/g; // Look for 10+ consecutive alphanumerics
+            const matches = pathAndQuery.match(randomPattern);
+            if (matches && matches.some(match => match.length > 15 && !/[aeiou]/i.test(match))) { // Very long and no vowels (likely random)
+                score += 2;
+                reasons.push('Contains long sequences of random numbers/letters, possibly obfuscated.');
+            }
+            
+            // Determine level
+            if (score >= 4) {
+                return {
+                    level: 'dangerous',
+                    message: `<p>🚨 Dangerous: This URL appears highly suspicious.</p><ul>${reasons.map(r => `<li>${r}</li>`).join('')}</ul><p>Do not click or enter info!</p>`
+                };
+            } else if (score >= 2) {
+                return {
+                    level: 'suspicious',
+                    message: `<p>⚠️ Suspicious: This URL has some red flags.</p><ul>${reasons.map(r => `<li>${r}</li>`).join('')}</ul><p>Verify before proceeding.</p>`
+                };
+            } else {
+                return {
+                    level: 'safe',
+                    message: `<p>✅ Safe: This URL looks okay, but always stay vigilant.</p>`
+                };
+            }
+        }
+    </script>
+</body>
+</html>
